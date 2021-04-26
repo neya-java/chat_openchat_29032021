@@ -21,6 +21,7 @@ import javafx.stage.WindowEvent;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.URL;
@@ -47,7 +48,7 @@ public class Controller implements Initializable {
     private DataOutputStream out;
 
     private final String IP_ADDRESS = "localhost";
-    private final int PORT = 8189;
+    private final int PORT = 8205;
 
     private boolean authenticated;
     private String nickname;
@@ -55,6 +56,8 @@ public class Controller implements Initializable {
     private Stage stage;
     private Stage regStage;
     private RegController regController;
+
+    private String login;
 
     public void setAuthenticated(boolean authenticated) {
         this.authenticated = authenticated;
@@ -67,6 +70,7 @@ public class Controller implements Initializable {
 
         if (!authenticated) {
             nickname = "";
+            //LogFile.stopLogFile();
         }
         setTitle(nickname);
         textArea.clear();
@@ -96,8 +100,11 @@ public class Controller implements Initializable {
             in = new DataInputStream(socket.getInputStream());
             out = new DataOutputStream(socket.getOutputStream());
 
+            LogFile logFile = new LogFile();
+
             new Thread(() -> {
                 try {
+
                     //цикл аутентификации
                     while (true) {
                         String str = in.readUTF();
@@ -109,9 +116,18 @@ public class Controller implements Initializable {
                             if (str.startsWith("/auth_ok")) {
                                 nickname = str.split("\\s+")[1];
                                 setAuthenticated(true);
+//                                String fileName = "history_"+nickname+".txt";
+//                                System.out.println(fileName);
+//                                File file = new File("client/history_" +nickname+ ".txt");
+//                                logFile.createLogFile(nickname, file);
+                                LogFile.createLogFile(login);
                                 break;
                             }
                             if (str.startsWith("/reg_ok")) {
+//                                String fileName = "history_"+nickname+".txt";
+//                                System.out.println(fileName);
+//                                LogFile logFile = new LogFile();
+//                                logFile.createLogFile(nickname);
                                 regController.showResult("/reg_ok");
                             }
                             if (str.startsWith("/reg_no")) {
@@ -125,6 +141,7 @@ public class Controller implements Initializable {
                     //цикл работы
                     while (authenticated) {
                         String str = in.readUTF();
+                        //  logFile.addTextLogFiles(str);
 
                         if (str.startsWith("/")) {
                             if (str.equals("/end")) {
@@ -147,7 +164,11 @@ public class Controller implements Initializable {
                             }
                             //==============//
                         } else {
+//                            logFile.addTextLogFiles(str, nickname);
+
                             textArea.appendText(str + "\n");
+                            LogFile.writeInLogFile(str);
+
                         }
                     }
                 } catch (IOException e) {
@@ -155,6 +176,7 @@ public class Controller implements Initializable {
                 } finally {
                     System.out.println("disconnect");
                     setAuthenticated(false);
+                    LogFile.stopLogFile();
                     try {
                         socket.close();
                     } catch (IOException e) {
@@ -186,6 +208,7 @@ public class Controller implements Initializable {
         }
         String msg = String.format("/auth %s %s",
                 loginField.getText().trim(), passwordField.getText().trim());
+        login = loginField.getText().trim();
 
         try {
             out.writeUTF(msg);
